@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel - मेरी मोबाइल शॉप</title>
-    <script src="https://jsdelivr.net"></script>
+    <!-- सही Appwrite Web SDK CDN लिंक -->
+    <script src="https://cdn.jsdelivr.net/npm/appwrite@14.0.1"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
         body { background-color: #f4f6f9; color: #333; }
@@ -16,15 +17,15 @@
         .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 15px; }
         input, select, button { padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; width: 100%; margin-bottom: 10px; }
         button { background-color: #f02e65; color: white; border: none; cursor: pointer; font-weight: bold; }
-        button:disabled { background-color: #999; }
+        button:disabled { background-color: #999; cursor: not-allowed; }
         .nav-btns { display: flex; gap: 10px; align-items: center; }
         .shop-link { color: white; text-decoration: none; font-size: 14px; background: rgba(0,0,0,0.2); padding: 8px 12px; border-radius: 5px; }
         .logout-btn { width: auto; background: #222; padding: 8px 15px; margin: 0; }
         .mobile-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; }
         .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; }
-        .card img { width: 100%; height: 150px; object-fit: contain; margin-bottom: 10px; }
+        .card img { width: 100%; height: 150px; object-fit: contain; margin-bottom: 10px; background: #f9f9f9; }
         .delete-btn { background-color: #d32f2f; margin-top: 10px; }
-        .hidden { display: none; }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
@@ -70,17 +71,21 @@
     const { Client, Account, Databases, Storage, ID, Query } = Appwrite;
 
     // अपनी Appwrite की जानकारी यहाँ भरें
-    const APPWRITE_ENDPOINT = 'https://appwrite.io';
+    const APPWRITE_ENDPOINT = 'https://cloud.appwrite.io/v1'; // सही एंडपॉइंट
     const PROJECT_ID = 'YOUR_PROJECT_ID';
     const DATABASE_ID = 'YOUR_DATABASE_ID';
     const COLLECTION_ID = 'YOUR_COLLECTION_ID';
     const BUCKET_ID = 'YOUR_BUCKET_ID';
 
-    const client = new Client().setEndpoint(APPWRITE_ENDPOINT).setProject(PROJECT_ID);
+    const client = new Client()
+        .setEndpoint(APPWRITE_ENDPOINT)
+        .setProject(PROJECT_ID);
+        
     const account = new Account(client);
     const databases = new Databases(client);
     const storage = new Storage(client);
 
+    // सेशन चेक करें
     async function checkSession() {
         try {
             await account.get();
@@ -95,23 +100,38 @@
         }
     }
 
+    // लॉगिन फॉर्म हैंडलर
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const email = document.getElementById('adminEmail').value;
         const password = document.getElementById('adminPassword').value;
+        const btn = e.target.querySelector('button');
+        
+        btn.disabled = true;
+        btn.innerText = "लॉगिन हो रहा है...";
+
         try {
             await account.createEmailPasswordSession(email, password);
             checkSession();
         } catch (error) {
             alert("लॉगिन विफल: " + error.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "लॉगिन करें";
         }
     });
 
+    // लॉगआउट फंक्शन
     async function logout() {
-        await account.deleteSession('current');
-        checkSession();
+        try {
+            await account.deleteSession('current');
+            checkSession();
+        } catch (error) {
+            alert("लॉगआउट में त्रुटि: " + error.message);
+        }
     }
 
+    // मोबाइल जोड़ने का फंक्शन
     document.getElementById('addMobileForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const btn = document.getElementById('submitBtn');
@@ -123,51 +143,94 @@
             const specs = document.getElementById('phoneSpecs').value;
             const price = document.getElementById('phonePrice').value;
             const status = document.getElementById('phoneStatus').value;
-            const file = document.getElementById('phoneImage').files[0];
+            const file = document.getElementById('phoneImage').files[0]; // सही फाइल ऑब्जेक्ट
 
+            // 1. फाइल अपलोड करें
             const uploadedFile = await storage.createFile(BUCKET_ID, ID.unique(), file);
+            
+            // 2. इमेज URL प्राप्त करें
             const imageUrl = storage.getFileView(BUCKET_ID, uploadedFile.$id);
 
+            // 3. डेटाबेस में सेव करें
             await databases.createDocument(DATABASE_ID, COLLECTION_ID, ID.unique(), {
-                name, specs, price, status, imageUrl: imageUrl.toString()
+                name, 
+                specs, 
+                price, 
+                status, 
+                imageUrl: imageUrl.toString()
             });
 
             document.getElementById('addMobileForm').reset();
-            alert("मोबाइल जुड़ गया!");
+            alert("✅ मोबाइल सफलतापूर्वक जुड़ गया!");
             loadAdminMobiles();
         } catch (error) {
+            console.error(error);
             alert("त्रुटि: " + error.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "लिस्ट में जोड़ें";
         }
-
-        btn.disabled = false;
-        btn.innerText = "लिस्ट में जोड़ें";
     });
 
+    // मोबाइल लिस्ट लोड करें
     async function loadAdminMobiles() {
         const list = document.getElementById('adminMobileList');
-        const response = await databases.listDocuments(DATABASE_ID, COLLECTION_ID, [Query.orderDesc('$createdAt')]);
-        list.innerHTML = '';
+        list.innerHTML = 'लोड हो रहा है...';
 
-        response.documents.forEach((mobile) => {
-            const card = document.createElement('div');
-            card.className = 'card';
-            card.innerHTML = `
-                <img src="${mobile.imageUrl}" alt="${mobile.name}">
-                <h4>${mobile.name}</h4>
-                <p>₹${mobile.price} (${mobile.status === 'upcoming' ? 'जल्द आ रहा है' : 'उपलब्ध'})</p>
-                <button class="delete-btn" onclick="deleteMobile('${mobile.$id}')">डिलीट करें</button>
-            `;
-            list.appendChild(card);
-        });
-    }
+        try {
+            const response = await databases.listDocuments(
+                DATABASE_ID, 
+                COLLECTION_ID, 
+                [Query.orderDesc('$createdAt')]
+            );
+            
+            list.innerHTML = '';
 
-    async function deleteMobile(id) {
-        if (confirm("क्या आप वाकई इस मोबाइल को हटाना चाहते हैं?")) {
-            await databases.deleteDocument(DATABASE_ID, COLLECTION_ID, id);
-            loadAdminMobiles();
+            if (response.documents.length === 0) {
+                list.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #666;">अभी तक कोई मोबाइल जोड़ा नहीं गया है।</p>';
+                return;
+            }
+
+            response.documents.forEach((mobile) => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <img src="${mobile.imageUrl}" alt="${mobile.name}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'">
+                    <h4>${mobile.name}</h4>
+                    <p style="color: #666; font-size: 13px; margin: 5px 0;">${mobile.specs}</p>
+                    <p style="font-weight: bold; color: #2e7d32;">₹${Number(mobile.price).toLocaleString('en-IN')}</p>
+                    <p style="font-size: 12px; color: #f02e65;">${mobile.status === 'upcoming' ? '🔜 जल्द आ रहा है' : '✅ उपलब्ध'}</p>
+                    <button class="delete-btn" onclick="deleteMobile('${mobile.$id}', this)">🗑️ डिलीट करें</button>
+                `;
+                list.appendChild(card);
+            });
+        } catch (error) {
+            console.error(error);
+            list.innerHTML = '<p style="color: red; grid-column: 1/-1; text-align: center;">डेटा लोड करने में त्रुटि। कृपया Appwrite ID और Permissions जांचें।</p>';
         }
     }
 
+    // मोबाइल डिलीट करें
+    async function deleteMobile(id, btnElement) {
+        if (confirm("क्या आप वाकई इस मोबाइल को हटाना चाहते हैं?")) {
+            const originalText = btnElement.innerText;
+            btnElement.disabled = true;
+            btnElement.innerText = "हटाया जा रहा है...";
+
+            try {
+                await databases.deleteDocument(DATABASE_ID, COLLECTION_ID, id);
+                alert("मोबाइल सफलतापूर्वक हटा दिया गया।");
+                loadAdminMobiles();
+            } catch (error) {
+                console.error(error);
+                alert("हटाने में त्रुटि: " + error.message);
+                btnElement.disabled = false;
+                btnElement.innerText = originalText;
+            }
+        }
+    }
+
+    // पेज लोड होने पर सेशन चेक करें
     checkSession();
 </script>
 
