@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title> 📱Ramraja mobile shop 🛠️</title>
+<title>मेरी मोबाइल शॉप</title>
 <script src="https://cdn.jsdelivr.net/npm/appwrite@14.0.1"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
@@ -65,7 +65,8 @@ footer a { color: #f02e65; text-decoration: none; font-weight: bold; font-size: 
 </div>
 
 <footer>
-    <p>© 2024 मेरी मोबाइल शॉप</p>
+    <!-- ✅ साल अपने आप अपडेट होगा -->
+    <p>© <span id="currentYear"></span> मेरी मोबाइल शॉप</p>
     <p style="margin-top:10px;"><a href="#" onclick="showAdminLogin(); return false;">🔐 मालिक लॉगिन</a></p>
 </footer>
 </div>
@@ -99,7 +100,8 @@ footer a { color: #f02e65; text-decoration: none; font-weight: bold; font-size: 
         <form id="addMobileForm" class="form-grid">
             <input type="text" id="phoneName" placeholder="मोबाइल का नाम" required>
             <input type="text" id="phoneSpecs" placeholder="डिटेल्स (RAM, स्टोरेज)" required>
-            <input type="text" id="phonePrice" placeholder="कीमत (₹ में)" required>
+            <!-- ✅ कीमत अब सिर्फ नंबर लेगी -->
+            <input type="number" id="phonePrice" placeholder="कीमत (सिर्फ अंक, जैसे 15000)" min="0" required>
             <input type="file" id="phoneImage" accept="image/*" required>
             <select id="phoneStatus">
                 <option value="available">दुकान में उपलब्ध है</option>
@@ -118,18 +120,22 @@ footer a { color: #f02e65; text-decoration: none; font-weight: bold; font-size: 
 // ===== Appwrite सेटअप =====
 const { Client, Account, Databases, Storage, ID, Query } = Appwrite;
 
-// ⚠️ ये 4 ID अपनी Appwrite Console से कॉपी करके भरें
 const APPWRITE_ENDPOINT = 'https://cloud.appwrite.io/v1';
 const PROJECT_ID = '6aa2ebbf000296878b87';
 const DATABASE_ID = '6aa2ecdd0037d1cdddcd';
 const COLLECTION_ID = '6af6e0b50007b468622c';
 const BUCKET_ID = '6aa2f5a00028668aa537';
-const shopWhatsAppNumber = "919876543210";
+
+// ⚠️ यहाँ अपना असली WhatsApp नंबर डालें (91 के साथ, बिना + या स्पेस के)
+const shopWhatsAppNumber = "916261577705"; 
 
 const client = new Client().setEndpoint(APPWRITE_ENDPOINT).setProject(PROJECT_ID);
 const account = new Account(client);
 const databases = new Databases(client);
 const storage = new Storage(client);
+
+// ✅ फुटर में साल अपने आप डालें (2026, 2027...)
+document.getElementById('currentYear').textContent = new Date().getFullYear();
 
 // ===== नेविगेशन =====
 function showAdminLogin() {
@@ -149,7 +155,7 @@ function showDashboard() {
 function backToShop() {
     document.getElementById('adminDashboard').classList.add('hidden');
     document.getElementById('publicSection').classList.remove('hidden');
-    loadMobiles(); // ताज़ा डेटा लोड हो
+    loadMobiles();
 }
 
 // ===== सेशन चेक =====
@@ -193,11 +199,15 @@ async function loadMobiles() {
         const res = await databases.listDocuments(DATABASE_ID, COLLECTION_ID, [Query.orderDesc('$createdAt')]);
         availableList.innerHTML = ''; upcomingList.innerHTML = '';
         if (res.documents.length === 0) {
-            availableList.innerHTML = '<p>अभी कोई मोबाइल नहीं है।</p>';
+            availableList.innerHTML = '<p style="grid-column:1/-1; text-align:center; color:#666;">अभी कोई मोबाइल नहीं है।</p>';
         }
         res.documents.forEach(m => {
             const msg = encodeURIComponent(`नमस्ते, मुझे ${m.name} (₹${m.price}) के बारे में जानकारी चाहिए।`);
             const link = `https://wa.me/${shopWhatsAppNumber}?text=${msg}`;
+            
+            // ✅ कीमत को सुरक्षित तरीके से फॉर्मेट करें (NaN से बचाव)
+            const safePrice = (Number(String(m.price).replace(/[^\d.]/g, '')) || 0).toLocaleString('en-IN');
+
             const card = document.createElement('div');
             card.className = 'card';
             card.innerHTML = `
@@ -206,7 +216,7 @@ async function loadMobiles() {
                 <div class="card-body">
                     <div class="card-title">${m.name}</div>
                     <div class="card-specs">${m.specs}</div>
-                    <div class="card-price">₹${Number(m.price).toLocaleString('en-IN')}</div>
+                    <div class="card-price">₹${safePrice}</div>
                     <a href="${link}" target="_blank" class="whatsapp-btn">WhatsApp पर बुक करें</a>
                 </div>`;
             (m.status === 'upcoming' ? upcomingList : availableList).appendChild(card);
@@ -224,15 +234,18 @@ async function loadAdminMobiles() {
     try {
         const res = await databases.listDocuments(DATABASE_ID, COLLECTION_ID, [Query.orderDesc('$createdAt')]);
         list.innerHTML = '';
-        if (res.documents.length === 0) { list.innerHTML = '<p>अभी कोई मोबाइल नहीं।</p>'; return; }
+        if (res.documents.length === 0) { list.innerHTML = '<p style="grid-column:1/-1; text-align:center;">अभी कोई मोबाइल नहीं।</p>'; return; }
         res.documents.forEach(m => {
+            // ✅ कीमत को सुरक्षित तरीके से फॉर्मेट करें
+            const safePrice = (Number(String(m.price).replace(/[^\d.]/g, '')) || 0).toLocaleString('en-IN');
+            
             const card = document.createElement('div');
             card.className = 'admin-card';
             card.innerHTML = `
                 <img src="${m.imageUrl}" alt="${m.name}" onerror="this.src='https://via.placeholder.com/120?text=No+Image'">
                 <h4>${m.name}</h4>
                 <p style="color:#666;font-size:13px;">${m.specs}</p>
-                <p style="font-weight:bold;color:#2e7d32;">₹${Number(m.price).toLocaleString('en-IN')}</p>
+                <p style="font-weight:bold;color:#2e7d32;">₹${safePrice}</p>
                 <p style="font-size:12px;color:#f02e65;">${m.status === 'upcoming' ? '🔜 जल्द आ रहा है' : '✅ उपलब्ध'}</p>
                 <button class="delete-btn" onclick="deleteMobile('${m.$id}', this)">🗑️ डिलीट</button>`;
             list.appendChild(card);
@@ -253,11 +266,18 @@ document.getElementById('addMobileForm').addEventListener('submit', async (e) =>
         const price = document.getElementById('phonePrice').value;
         const status = document.getElementById('phoneStatus').value;
         const file = document.getElementById('phoneImage').files[0];
+        
         const uploaded = await storage.createFile(BUCKET_ID, ID.unique(), file);
         const imageUrl = storage.getFileView(BUCKET_ID, uploaded.$id);
+        
         await databases.createDocument(DATABASE_ID, COLLECTION_ID, ID.unique(), {
-            name, specs, price, status, imageUrl: imageUrl.toString()
+            name, 
+            specs, 
+            price: Number(price), // ✅ कीमत को नंबर के रूप में सेव करें
+            status, 
+            imageUrl: imageUrl.toString()
         });
+        
         document.getElementById('addMobileForm').reset();
         alert("✅ मोबाइल जुड़ गया!");
         loadAdminMobiles();
@@ -279,7 +299,7 @@ async function deleteMobile(id, btnEl) {
 
 // ===== शुरुआत =====
 checkSession();
-if (!document.getElementById('adminDashboard').classList.contains('hidden') === false) {
+if (document.getElementById('adminDashboard').classList.contains('hidden')) {
     loadMobiles();
 }
 </script>
