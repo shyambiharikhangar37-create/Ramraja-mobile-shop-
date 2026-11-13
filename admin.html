@@ -1,1 +1,175 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - मेरी मोबाइल शॉप</title>
+    <script src="https://jsdelivr.net"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: #f4f6f9; color: #333; }
+        header { background-color: #f02e65; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .container { max-width: 1000px; margin: 20px auto; padding: 0 15px; }
+        .login-box { max-width: 400px; margin: 80px auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .login-box h2 { margin-bottom: 20px; text-align: center; color: #f02e65; }
+        .admin-panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 30px; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 15px; }
+        input, select, button { padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; width: 100%; margin-bottom: 10px; }
+        button { background-color: #f02e65; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button:disabled { background-color: #999; }
+        .nav-btns { display: flex; gap: 10px; align-items: center; }
+        .shop-link { color: white; text-decoration: none; font-size: 14px; background: rgba(0,0,0,0.2); padding: 8px 12px; border-radius: 5px; }
+        .logout-btn { width: auto; background: #222; padding: 8px 15px; margin: 0; }
+        .mobile-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; }
+        .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; }
+        .card img { width: 100%; height: 150px; object-fit: contain; margin-bottom: 10px; }
+        .delete-btn { background-color: #d32f2f; margin-top: 10px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
 
+<header>
+    <h2>🔐 दुकानदार एडमिन पैनल</h2>
+    <div class="nav-btns">
+        <a href="index.html" class="shop-link">🏠 दुकान देखें</a>
+        <button id="logoutBtn" class="logout-btn hidden" onclick="logout()">लॉगआउट</button>
+    </div>
+</header>
+
+<div id="loginSection" class="login-box">
+    <h2>मालिक लॉगिन</h2>
+    <form id="loginForm">
+        <input type="email" id="adminEmail" placeholder="ईमेल डालें" required>
+        <input type="password" id="adminPassword" placeholder="पासवर्ड डालें" required>
+        <button type="submit">लॉगिन करें</button>
+    </form>
+</div>
+
+<div id="dashboardSection" class="container hidden">
+    <div class="admin-panel">
+        <h3>➕ नया मोबाइल जोड़ें</h3>
+        <form id="addMobileForm" class="form-grid">
+            <input type="text" id="phoneName" placeholder="मोबाइल का नाम" required>
+            <input type="text" id="phoneSpecs" placeholder="डिटेल्स (RAM, स्टोरेज)" required>
+            <input type="text" id="phonePrice" placeholder="कीमत (₹ में)" required>
+            <input type="file" id="phoneImage" accept="image/*" required>
+            <select id="phoneStatus">
+                <option value="available">दुकान में उपलब्ध है</option>
+                <option value="upcoming">नया आने वाला (Coming Soon)</option>
+            </select>
+            <button type="submit" id="submitBtn">लिस्ट में जोड़ें</button>
+        </form>
+    </div>
+
+    <h3 style="margin-bottom: 15px;">📋 सभी अपलोड किए गए मोबाइल</h3>
+    <div class="mobile-list" id="adminMobileList">लोड हो रहा है...</div>
+</div>
+
+<script>
+    const { Client, Account, Databases, Storage, ID, Query } = Appwrite;
+
+    // अपनी Appwrite की जानकारी यहाँ भरें
+    const APPWRITE_ENDPOINT = 'https://appwrite.io';
+    const PROJECT_ID = 'YOUR_PROJECT_ID';
+    const DATABASE_ID = 'YOUR_DATABASE_ID';
+    const COLLECTION_ID = 'YOUR_COLLECTION_ID';
+    const BUCKET_ID = 'YOUR_BUCKET_ID';
+
+    const client = new Client().setEndpoint(APPWRITE_ENDPOINT).setProject(PROJECT_ID);
+    const account = new Account(client);
+    const databases = new Databases(client);
+    const storage = new Storage(client);
+
+    async function checkSession() {
+        try {
+            await account.get();
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('dashboardSection').classList.remove('hidden');
+            document.getElementById('logoutBtn').classList.remove('hidden');
+            loadAdminMobiles();
+        } catch (error) {
+            document.getElementById('loginSection').classList.remove('hidden');
+            document.getElementById('dashboardSection').classList.add('hidden');
+            document.getElementById('logoutBtn').classList.add('hidden');
+        }
+    }
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('adminEmail').value;
+        const password = document.getElementById('adminPassword').value;
+        try {
+            await account.createEmailPasswordSession(email, password);
+            checkSession();
+        } catch (error) {
+            alert("लॉगिन विफल: " + error.message);
+        }
+    });
+
+    async function logout() {
+        await account.deleteSession('current');
+        checkSession();
+    }
+
+    document.getElementById('addMobileForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        btn.innerText = "अपलोड हो रहा है...";
+
+        try {
+            const name = document.getElementById('phoneName').value;
+            const specs = document.getElementById('phoneSpecs').value;
+            const price = document.getElementById('phonePrice').value;
+            const status = document.getElementById('phoneStatus').value;
+            const file = document.getElementById('phoneImage').files[0];
+
+            const uploadedFile = await storage.createFile(BUCKET_ID, ID.unique(), file);
+            const imageUrl = storage.getFileView(BUCKET_ID, uploadedFile.$id);
+
+            await databases.createDocument(DATABASE_ID, COLLECTION_ID, ID.unique(), {
+                name, specs, price, status, imageUrl: imageUrl.toString()
+            });
+
+            document.getElementById('addMobileForm').reset();
+            alert("मोबाइल जुड़ गया!");
+            loadAdminMobiles();
+        } catch (error) {
+            alert("त्रुटि: " + error.message);
+        }
+
+        btn.disabled = false;
+        btn.innerText = "लिस्ट में जोड़ें";
+    });
+
+    async function loadAdminMobiles() {
+        const list = document.getElementById('adminMobileList');
+        const response = await databases.listDocuments(DATABASE_ID, COLLECTION_ID, [Query.orderDesc('$createdAt')]);
+        list.innerHTML = '';
+
+        response.documents.forEach((mobile) => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <img src="${mobile.imageUrl}" alt="${mobile.name}">
+                <h4>${mobile.name}</h4>
+                <p>₹${mobile.price} (${mobile.status === 'upcoming' ? 'जल्द आ रहा है' : 'उपलब्ध'})</p>
+                <button class="delete-btn" onclick="deleteMobile('${mobile.$id}')">डिलीट करें</button>
+            `;
+            list.appendChild(card);
+        });
+    }
+
+    async function deleteMobile(id) {
+        if (confirm("क्या आप वाकई इस मोबाइल को हटाना चाहते हैं?")) {
+            await databases.deleteDocument(DATABASE_ID, COLLECTION_ID, id);
+            loadAdminMobiles();
+        }
+    }
+
+    checkSession();
+</script>
+
+</body>
+</html>
