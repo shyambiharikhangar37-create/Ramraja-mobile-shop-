@@ -3,8 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>रामराजा मोबाइल शॉप </title>
-    <script src="https://cdn.jsdelivr.net/npm/appwrite@14.0.1"></script>
+<script src="https://cdn.jsdelivr.net/npm/appwrite@14.0.1"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
 body { background-color: #f4f6f9; color: #333; }
@@ -16,7 +15,8 @@ header p { font-size: 14px; margin-top: 5px; opacity: 0.9; }
 .mobile-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
 .card { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); position: relative; display: flex; flex-direction: column; }
 .badge { position: absolute; top: 10px; right: 10px; background: #ff9800; color: white; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; z-index: 2; }
-.card img { width: 100%; height: 220px; object-fit: contain; background: #fff; padding: 10px; }
+.card img { width: 100%; height: 220px; object-fit: contain; background: #fff; padding: 10px; cursor: zoom-in; transition: transform 0.2s; }
+.card img:hover { transform: scale(1.02); }
 .card-body { padding: 15px; }
 .card-title { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
 .card-specs { font-size: 13px; color: #666; margin-bottom: 10px; }
@@ -40,11 +40,85 @@ button:disabled { background-color: #999; cursor: not-allowed; }
 .delete-btn { background-color: #d32f2f; padding: 6px; font-size: 12px; margin-top: 10px; }
 .admin-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
 .admin-card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; }
-.admin-card img { width: 100%; height: 120px; object-fit: contain; margin-bottom: 10px; }
+.admin-card img { width: 100%; height: 120px; object-fit: contain; margin-bottom: 10px; cursor: zoom-in; }
 .hidden { display: none !important; }
 .error-box { color: #d32f2f; background: #ffebee; padding: 15px; border-radius: 8px; grid-column: 1/-1; }
 footer { text-align: center; padding: 30px 20px; color: #666; font-size: 14px; margin-top: 50px; border-top: 1px solid #ddd; background: #fff; }
 footer a { color: #f02e65; text-decoration: none; font-weight: bold; font-size: 13px; }
+
+/* Full Screen Image Modal (Gallery Style) */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.95);
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+}
+.modal-content-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 95%;
+    max-height: 90vh;
+    width: 100%;
+}
+.modal-main-img {
+    max-width: 100%;
+    max-height: 65vh;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+    margin-bottom: 15px;
+}
+.modal-thumbnails {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    max-width: 100%;
+    padding: 5px;
+    justify-content: center;
+}
+.modal-thumb {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    opacity: 0.6;
+    transition: all 0.2s;
+}
+.modal-thumb:hover, .modal-thumb.active {
+    border-color: #f02e65;
+    opacity: 1;
+    transform: scale(1.1);
+}
+.close-modal {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    color: #fff;
+    font-size: 40px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 10000;
+    line-height: 1;
+}
+.close-modal:hover { color: #f02e65; }
+.image-labels {
+    color: #fff;
+    font-size: 14px;
+    margin-bottom: 5px;
+    background: rgba(255,255,255,0.2);
+    padding: 4px 12px;
+    border-radius: 15px;
+}
 </style>
 </head>
 <body>
@@ -65,16 +139,15 @@ footer a { color: #f02e65; text-decoration: none; font-weight: bold; font-size: 
 </div>
 
 <footer>
-    <!-- ✅ साल अपने आप अपडेट होगा -->
     <p>© <span id="currentYear"></span> मेरी मोबाइल शॉप</p>
-    <p style="margin-top:10px;"><a href="#" onclick="showAdminLogin(); return false;">🔐 मालिक लॉगिन</a></p>
+    <p style="margin-top:10px;"><a href="#" onclick="showAdminLogin(); return false;">🔐 shop key</a></p>
 </footer>
 </div>
 
 <!-- ============ एडमिन लॉगिन (छिपा हुआ) ============ -->
 <div id="adminLoginSection" class="hidden">
 <div class="admin-login-box">
-    <h2>🔐 मालिक लॉगिन</h2>
+    <h2>🔐 login</h2>
     <form id="loginForm">
         <input type="email" id="adminEmail" placeholder="ईमेल" required>
         <input type="password" id="adminPassword" placeholder="पासवर्ड" required>
@@ -84,12 +157,12 @@ footer a { color: #f02e65; text-decoration: none; font-weight: bold; font-size: 
 </div>
 </div>
 
-<!-- ============ एडमिन डैशबोर्ड (लॉगिन के बाद दिखे) ============ -->
+<!-- ============ एडमिन डैशबोर्ड (सिर्फ लॉगिन के बाद दिखे) ============ -->
 <div id="adminDashboard" class="hidden">
 <div class="admin-header">
     <h2>🔐 एडमिन पैनल</h2>
     <div class="nav-btns">
-        <a href="#" class="shop-link" onclick="backToShop(); return false;">🏠 दुकान देखें</a>
+        <a href="#" class="shop-link" onclick="backToShop(); return false;">🏠 shop</a>
         <button class="logout-btn" onclick="logout()">लॉगआउट</button>
     </div>
 </div>
@@ -100,9 +173,15 @@ footer a { color: #f02e65; text-decoration: none; font-weight: bold; font-size: 
         <form id="addMobileForm" class="form-grid">
             <input type="text" id="phoneName" placeholder="मोबाइल का नाम" required>
             <input type="text" id="phoneSpecs" placeholder="डिटेल्स (RAM, स्टोरेज)" required>
-            <!-- ✅ कीमत अब सिर्फ नंबर लेगी -->
             <input type="number" id="phonePrice" placeholder="कीमत (सिर्फ अंक, जैसे 15000)" min="0" required>
-            <input type="file" id="phoneImage" accept="image/*" required>
+            
+            <div style="grid-column: 1 / -1; font-weight: bold; margin-top: 10px; color: #f02e65;">📸 मोबाइल की फोटो (अधिकतम 4 कोण)</div>
+            <input type="file" id="phoneImage1" accept="image/*" required>
+            <input type="file" id="phoneImage2" accept="image/*">
+            <input type="file" id="phoneImage3" accept="image/*">
+            <input type="file" id="phoneImage4" accept="image/*">
+            <small style="grid-column: 1 / -1; color: #666; margin-top: -5px;">क्रम: 1. सामने, 2. पीछे, 3. बायां किनारा, 4. दायां किनारा (बाकी वैकल्पिक)</small>
+            
             <select id="phoneStatus">
                 <option value="available">दुकान में उपलब्ध है</option>
                 <option value="upcoming">नया आने वाला (Coming Soon)</option>
@@ -116,6 +195,16 @@ footer a { color: #f02e65; text-decoration: none; font-weight: bold; font-size: 
 </div>
 </div>
 
+<!-- ============ फुल स्क्रीन इमेज गैलरी मोडल ============ -->
+<div id="imageModal" class="modal">
+    <span class="close-modal" onclick="closeModal()">&times;</span>
+    <div class="modal-content-wrapper">
+        <div class="image-labels" id="imageLabel">मुख्य फोटो</div>
+        <img class="modal-main-img" id="modalMainImg">
+        <div class="modal-thumbnails" id="modalThumbnails"></div>
+    </div>
+</div>
+
 <script>
 // ===== Appwrite सेटअप =====
 const { Client, Account, Databases, Storage, ID, Query } = Appwrite;
@@ -126,27 +215,32 @@ const DATABASE_ID = '6aa2ecdd0037d1cdddcd';
 const COLLECTION_ID = '6af6e0b50007b468622c';
 const BUCKET_ID = '6aa2f5a00028668aa537';
 
-// ⚠️ यहाँ अपना असली WhatsApp नंबर डालें (91 के साथ, बिना + या स्पेस के)
-const shopWhatsAppNumber = "916261577705"; 
+const shopWhatsAppNumber = "916261577705";
 
 const client = new Client().setEndpoint(APPWRITE_ENDPOINT).setProject(PROJECT_ID);
 const account = new Account(client);
 const databases = new Databases(client);
 const storage = new Storage(client);
 
-// ✅ फुटर में साल अपने आप डालें (2026, 2027...)
 document.getElementById('currentYear').textContent = new Date().getFullYear();
+
+// ===== सुरक्षा स्टेटस =====
+let isLoggedIn = false;
 
 // ===== नेविगेशन =====
 function showAdminLogin() {
-    document.getElementById('publicSection').classList.add('hidden');
-    document.getElementById('adminLoginSection').classList.remove('hidden');
+    if (isLoggedIn) { showDashboard(); } 
+    else {
+        document.getElementById('publicSection').classList.add('hidden');
+        document.getElementById('adminLoginSection').classList.remove('hidden');
+    }
 }
 function hideAdminLogin() {
     document.getElementById('adminLoginSection').classList.add('hidden');
     document.getElementById('publicSection').classList.remove('hidden');
 }
 function showDashboard() {
+    isLoggedIn = true;
     document.getElementById('adminLoginSection').classList.add('hidden');
     document.getElementById('publicSection').classList.add('hidden');
     document.getElementById('adminDashboard').classList.remove('hidden');
@@ -160,12 +254,7 @@ function backToShop() {
 
 // ===== सेशन चेक =====
 async function checkSession() {
-    try {
-        await account.get();
-        showDashboard();
-    } catch (e) {
-        // लॉगिन नहीं है — public section दिखेगा (default)
-    }
+    try { await account.get(); isLoggedIn = true; } catch (e) { isLoggedIn = false; }
 }
 
 // ===== लॉगिन =====
@@ -174,10 +263,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     const btn = e.target.querySelector('button[type="submit"]');
     btn.disabled = true; btn.innerText = "लॉगिन हो रहा है...";
     try {
-        await account.createEmailPasswordSession(
-            document.getElementById('adminEmail').value,
-            document.getElementById('adminPassword').value
-        );
+        await account.createEmailPasswordSession(document.getElementById('adminEmail').value, document.getElementById('adminPassword').value);
         showDashboard();
     } catch (err) { alert("लॉगिन विफल: " + err.message); }
     btn.disabled = false; btn.innerText = "लॉगिन करें";
@@ -186,6 +272,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
 // ===== लॉगआउट =====
 async function logout() {
     try { await account.deleteSession('current'); } catch(e){}
+    isLoggedIn = false;
     document.getElementById('adminDashboard').classList.add('hidden');
     document.getElementById('publicSection').classList.remove('hidden');
     loadMobiles();
@@ -204,15 +291,22 @@ async function loadMobiles() {
         res.documents.forEach(m => {
             const msg = encodeURIComponent(`नमस्ते, मुझे ${m.name} (₹${m.price}) के बारे में जानकारी चाहिए।`);
             const link = `https://wa.me/${shopWhatsAppNumber}?text=${msg}`;
-            
-            // ✅ कीमत को सुरक्षित तरीके से फॉर्मेट करें (NaN से बचाव)
             const safePrice = (Number(String(m.price).replace(/[^\d.]/g, '')) || 0).toLocaleString('en-IN');
+
+            // इमेज एरे तैयार करें (पुराने डेटा के लिए backward compatibility)
+            let images = [];
+            if (m.imageUrls) {
+                try { images = JSON.parse(m.imageUrls); } catch(e) { images = [m.imageUrls]; }
+            } else if (m.imageUrl) {
+                images = [m.imageUrl];
+            }
+            const imagesData = encodeURIComponent(JSON.stringify(images));
 
             const card = document.createElement('div');
             card.className = 'card';
             card.innerHTML = `
                 ${m.status === 'upcoming' ? '<span class="badge">जल्द आ रहा है</span>' : ''}
-                <img src="${m.imageUrl}" alt="${m.name}" onerror="this.src='https://via.placeholder.com/220?text=No+Image'">
+                <img src="${images[0]}" alt="${m.name}" onerror="this.src='https://via.placeholder.com/220?text=No+Image'" data-images="${imagesData}" onclick="openModalFromElement(this)">
                 <div class="card-body">
                     <div class="card-title">${m.name}</div>
                     <div class="card-specs">${m.specs}</div>
@@ -236,13 +330,20 @@ async function loadAdminMobiles() {
         list.innerHTML = '';
         if (res.documents.length === 0) { list.innerHTML = '<p style="grid-column:1/-1; text-align:center;">अभी कोई मोबाइल नहीं।</p>'; return; }
         res.documents.forEach(m => {
-            // ✅ कीमत को सुरक्षित तरीके से फॉर्मेट करें
             const safePrice = (Number(String(m.price).replace(/[^\d.]/g, '')) || 0).toLocaleString('en-IN');
             
+            let images = [];
+            if (m.imageUrls) {
+                try { images = JSON.parse(m.imageUrls); } catch(e) { images = [m.imageUrls]; }
+            } else if (m.imageUrl) {
+                images = [m.imageUrl];
+            }
+            const imagesData = encodeURIComponent(JSON.stringify(images));
+
             const card = document.createElement('div');
             card.className = 'admin-card';
             card.innerHTML = `
-                <img src="${m.imageUrl}" alt="${m.name}" onerror="this.src='https://via.placeholder.com/120?text=No+Image'">
+                <img src="${images[0]}" alt="${m.name}" onerror="this.src='https://via.placeholder.com/120?text=No+Image'" data-images="${imagesData}" onclick="openModalFromElement(this)">
                 <h4>${m.name}</h4>
                 <p style="color:#666;font-size:13px;">${m.specs}</p>
                 <p style="font-weight:bold;color:#2e7d32;">₹${safePrice}</p>
@@ -255,31 +356,46 @@ async function loadAdminMobiles() {
     }
 }
 
-// ===== मोबाइल जोड़ें =====
+// ===== मोबाइल जोड़ें (4 फोटो अपलोड सपोर्ट के साथ) =====
 document.getElementById('addMobileForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!isLoggedIn) { alert("⛔ सुरक्षा चेक: मोबाइल जोड़ने के लिए मालिक लॉगिन आवश्यक है।"); return; }
+    
     const btn = document.getElementById('submitBtn');
     btn.disabled = true; btn.innerText = "अपलोड हो रहा है...";
+    
     try {
         const name = document.getElementById('phoneName').value;
         const specs = document.getElementById('phoneSpecs').value;
         const price = document.getElementById('phonePrice').value;
         const status = document.getElementById('phoneStatus').value;
-        const file = document.getElementById('phoneImage').files[0];
         
-        const uploaded = await storage.createFile(BUCKET_ID, ID.unique(), file);
-        const imageUrl = storage.getFileView(BUCKET_ID, uploaded.$id);
-        
+        // 4 फोटो फाइल्स इकट्ठा करें
+        const files = [
+            document.getElementById('phoneImage1').files[0],
+            document.getElementById('phoneImage2').files[0],
+            document.getElementById('phoneImage3').files[0],
+            document.getElementById('phoneImage4').files[0]
+        ].filter(f => f !== undefined); // केवल वही फाइलें लें जो चुनी गई हैं
+
+        const imageUrls = [];
+        for (const file of files) {
+            const uploaded = await storage.createFile(BUCKET_ID, ID.unique(), file);
+            const url = storage.getFileView(BUCKET_ID, uploaded.$id).toString();
+            imageUrls.push(url);
+        }
+
         await databases.createDocument(DATABASE_ID, COLLECTION_ID, ID.unique(), {
-            name, 
-            specs, 
-            price: Number(price), // ✅ कीमत को नंबर के रूप में सेव करें
-            status, 
-            imageUrl: imageUrl.toString()
+            name,
+            specs,
+            price: Number(price),
+            status,
+            imageUrls: JSON.stringify(imageUrls), // नए फील्ड में JSON एरे के रूप में सेव करें
+            imageUrl: imageUrls[0] // पुराने सिस्टम के साथ compatibility के लिए
         });
-        
+
         document.getElementById('addMobileForm').reset();
-        alert("✅ मोबाइल जुड़ गया!");
+        alert("✅ मोबाइल सफलतापूर्वक जुड़ गया!");
         loadAdminMobiles();
     } catch (err) { alert("त्रुटि: " + err.message); }
     btn.disabled = false; btn.innerText = "लिस्ट में जोड़ें";
@@ -287,6 +403,7 @@ document.getElementById('addMobileForm').addEventListener('submit', async (e) =>
 
 // ===== मोबाइल डिलीट =====
 async function deleteMobile(id, btnEl) {
+    if (!isLoggedIn) { alert("⛔ सुरक्षा चेक: डिलीट करने के लिए मालिक लॉगिन आवश्यक है।"); return; }
     if (!confirm("क्या वाकई हटाना है?")) return;
     const orig = btnEl.innerText;
     btnEl.disabled = true; btnEl.innerText = "हटा रहा है...";
@@ -297,11 +414,55 @@ async function deleteMobile(id, btnEl) {
     } catch (err) { alert("एरर: " + err.message); btnEl.disabled = false; btnEl.innerText = orig; }
 }
 
-// ===== शुरुआत =====
-checkSession();
-if (document.getElementById('adminDashboard').classList.contains('hidden')) {
-    loadMobiles();
+// ===== फुल स्क्रीन गैलरी मोडल फंक्शंस =====
+const labels = ["मुख्य फोटो (सामने)", "पीछे की फोटो", "बायां किनारा", "दायां किनारा"];
+
+function openModalFromElement(el) {
+    const imagesData = el.getAttribute('data-images');
+    if (!imagesData) return;
+    const images = JSON.parse(decodeURIComponent(imagesData));
+    openModal(images);
 }
+
+function openModal(images) {
+    if (!images || images.length === 0) return;
+    const modal = document.getElementById('imageModal');
+    const mainImg = document.getElementById('modalMainImg');
+    const thumbsContainer = document.getElementById('modalThumbnails');
+    const label = document.getElementById('imageLabel');
+    
+    modal.style.display = 'flex';
+    mainImg.src = images[0];
+    label.textContent = labels[0] || "फोटो";
+    thumbsContainer.innerHTML = '';
+    
+    images.forEach((imgSrc, index) => {
+        const thumb = document.createElement('img');
+        thumb.src = imgSrc;
+        thumb.className = 'modal-thumb' + (index === 0 ? ' active' : '');
+        thumb.title = labels[index] || `फोटो ${index + 1}`;
+        thumb.onclick = () => {
+            mainImg.src = imgSrc;
+            label.textContent = labels[index] || `फोटो ${index + 1}`;
+            document.querySelectorAll('.modal-thumb').forEach(t => t.classList.remove('active'));
+            thumb.classList.add('active');
+        };
+        thumbsContainer.appendChild(thumb);
+    });
+}
+
+function closeModal() {
+    document.getElementById('imageModal').style.display = 'none';
+}
+
+// मोडल के बैकग्राउंड (काले हिस्से) पर क्लिक करने पर भी बंद हो जाए
+document.getElementById('imageModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+
+// ===== शुरुआत =====
+loadMobiles();
+checkSession();
 </script>
 </body>
 </html>
